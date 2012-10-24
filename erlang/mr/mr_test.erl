@@ -104,4 +104,30 @@ word_count_test() ->
                   ,{"World", 2}]).
 
 %% Tests for MXM functions
+
+%% Test all functions on a very very small set so that we can actually be sure
+%% the results are correct
+mxm_miniset_test() ->
+    {ok, MR} = mr:start(4),
+    % Count
+    {TWords, TTracks} = read_mxm:from_file("mini_dataset.txt"),
+    Sum = mr_wc:count(MR,TTracks),
+    ?assert(Sum=:=47),
+    % Grep
+    ContainingYou = mr_wc:grep(MR, "you", {TWords, TTracks}),
+    ?assert((ContainingYou=:=[<<"3811449">>,<<"5325944">>]) or (ContainingYou=:=[<<"5325944">>,<<"3811449">>])),
+    % Compute averages
+    {TAvgDiff, TAvgWords} = mr_wc:compute_averages(MR, {TWords, TTracks}),
+    ?assert(TAvgWords=:=15.666666666666666),
+    ?assert(TAvgDiff=:=4.0),
+    % RevInf
+    TRevInd = mr_wc:reverse_index(MR, {TWords, TTracks}),
+    ContYou2 = dict:fetch("you", TRevInd),
+    ?assert((ContYou2=:=[<<"3811449">>,<<"5325944">>]) or (ContYou2=:=[<<"5325944">>,<<"3811449">>])),
+    ?assert(dict:fetch("acabar", TRevInd)=:=[<<"1548880">>]),
+    mr:stop(MR),
+    ok.
+
+
+
     
