@@ -11,8 +11,12 @@
 %%%% Interface
 
 start(N) ->
-    {Reducer, Mappers} = init(N),
-    {ok, spawn(fun() -> coordinator_loop(Reducer, Mappers) end)}.
+    if N > 0 ->
+        {Reducer, Mappers} = init(N),
+        {ok, spawn(fun() -> coordinator_loop(Reducer, Mappers) end)};
+    ?otherwise ->
+        fail
+    end.
 
 status(CPid) ->
     rpc(CPid, status).
@@ -88,7 +92,7 @@ coordinator_loop(Reducer, Mappers) ->
 	    reply_ok(From);
 	{From, status} ->
 	    io:format("This is MR coordinator ~p managing ~B mappers.~n", [self(), length(Mappers)]),
-	    reply_ok(From),
+	    reply_ok(From, {self(), length(Mappers)}),
 	    coordinator_loop(Reducer, Mappers);
 	{From, {job, MapFun, RedFun, RedInit, Data}} ->
 	    %% Uh, update mappers and reducers, split data and start processing
@@ -132,20 +136,21 @@ reducer_loop() ->
 %% Active reducer.
 %% Missing is assumed to be the length of the input. This is simple and crude but it works.
 gather_data_from_mappers(Fun, Acc, Missing) ->
-    receive
-	{data, Data} ->
-	    NAcc = Fun(Data, Acc),
-	    if
-		Missing > 1 ->
-		    gather_data_from_mappers(Fun, NAcc, Missing-1);
-		?otherwise ->
-		    io:format("Finished~n"),
-		    NAcc
-	    end
-    after 5000 ->
-	    io:format("Timed out - state is now: Acc: ~p, Missing: ~p~n", [Acc, Missing]),
+    if 
+        Missing > 0 ->
+            receive
+	        {data, Data} ->
+	            NAcc = Fun(Data, Acc),
+	            gather_data_from_mappers(Fun, NAcc, Missing-1)
+            after 5000 ->
+	        io:format("Timed out - state is now: Acc: ~p, Missing: ~p~n", [Acc, Missing]),
+	        Acc
+            end;
+        ?otherwise ->
+	    io:format("Finished~n"),
 	    Acc
     end.
+
 
 %%% Mapper
 
