@@ -155,7 +155,7 @@ mxm_grep_revind_test() ->
 
 mxm_count_test() ->
     {ok, MR} = mr:start(4),
-    {Words, Tracks} = read_mxm:from_file("mxm_dataset_test.txt"),
+    {_, Tracks} = read_mxm:from_file("mxm_dataset_test.txt"),
     Sum = mr_wc:count(MR,Tracks),
     ?assert(Sum=:=5761183),
     mr:stop(MR).
@@ -166,6 +166,15 @@ mxm_avg_test() ->
     {AvgDiff, AvgWords} = mr_wc:compute_averages(MR, {Words, Tracks}),
     ?assert((AvgWords>212.25299340) and (AvgWords < 212.25299341)),
     ?assert((AvgDiff>81.029694580) and (AvgDiff < 81.029694581)),
+    mr:stop(MR).
+
+mxm_stemming_test() ->
+    {ok, MR} = mr:start(4),
+    {Words, Tracks} = read_mxm:from_file("mxm_dataset_test.txt"),
+    NoStemming = mr_wc:grep(MR, "behave", {Words, Tracks}),
+    Stemming = mr_wc:grep(MR, "behave", {Words, Tracks}, "stemmed_words.txt"),
+    ?assert(length(NoStemming)=:=0),
+    ?assert(length(Stemming)=:=43),
     mr:stop(MR).
 
 compare_sets(A,B) ->
@@ -200,7 +209,8 @@ test_all() ->
             ,fun mxm_miniset_test/0
             ,fun mxm_count_test/0
             ,fun mxm_avg_test/0
-            ,fun mxm_grep_revind_test/0],
+            ,fun mxm_grep_revind_test/0
+	    ,fun mxm_stemming_test/0],
     lists:map(fun (X) -> eunit:test({timeout, 45, X}) end, Tests).
 
 

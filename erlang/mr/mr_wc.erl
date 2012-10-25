@@ -41,7 +41,7 @@ count(MR, Tracks) ->
 
 %% Compute the average number of different words in a song _and_ the
 %% average total number of words in a song.
-compute_averages(MR, {Words, Tracks}) ->
+compute_averages(MR, {_, Tracks}) ->
     {ok, {AvgDiff, AvgWords, _}} = mr:job(MR,
 					  fun(Track) ->
 						  %% Output: Number of different words + Number of words in song
@@ -60,8 +60,9 @@ compute_averages(MR, {Words, Tracks}) ->
 
 %% For a given word, find the MSD track ID's for all songs with that word.
 %%
+%% If a file with words stems is used provided (by prividing the filename):
 %% If the word is not on stemmed form, we try to find the stemmed form
-%% by parsing and reading the file "stemmed_words.txt" (assuming it
+%% by parsing and reading the specified file (assuming it
 %% exists). For parsing this file we utilise the same given MR.
 %%
 %% Words: List of words
@@ -70,12 +71,16 @@ compute_averages(MR, {Words, Tracks}) ->
 %% Reducer: Figure if our given song should be added to the list of
 %%          songs containing WordIdx
 grep(MR, Word, {Words, Tracks}) ->
-    WordIdx = case lists:member(Word, Words) of
-    		  true ->
+    grep(MR, Word, {Words, Tracks}, none).
+grep(MR, Word, {Words, Tracks}, Stemfile) ->
+    WordIdx = case {lists:member(Word, Words), Stemfile} of
+    		  {_, none} ->
     		      index_of(Word, Words);
-    		  false ->
+    		  {true, _} ->
+    		      index_of(Word, Words);
+    		  {false, Filename} ->
 		      io:format("Stemming '~s'~n", [Word]),
-    		      {ok, Bin} = file:read_file("stemmed_words.txt"),
+    		      {ok, Bin} = file:read_file(Filename),
     		      BLines = binary:split(Bin, <<$\n>>, [global,trim]),
     		      {ok, WordMapping} = mr:job(MR,
 						 fun(BLin) ->
