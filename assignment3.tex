@@ -23,7 +23,7 @@
 The code is split up into three modules: The module \texttt{mr}
  contains the general purpose Map-Reduce skeleton, \texttt{mr\_wc} contains functions for working with the MXM dataset
  (using said skeleton) and \texttt{mr\_test} contains
-  unit tests for both of the aforementioned modules. The file \texttt{read\_mxm.erl} contains the provided code for reading the dataset, and we expect the file \texttt{mxm\_dataset\_test.txt} to be in the current folder.
+  unit tests for both of the aforementioned modules. The file \texttt{read\_mxm.erl} contains the provided code for reading the dataset, and for testing purposes we expect the file \texttt{mxm\_dataset\_test.txt} as well as a much smaller set (\texttt{mini\_dataset.txt}) to be in the current folder. If word stems are to be looked up, a file formatted like \texttt{stemmed\_words.txt} from the mxm dataset website needs to be present as well.
 
 \section*{Code description}
 We have implemented or completed the following functionality:
@@ -78,16 +78,16 @@ As far as we could determine, our code fulfills the specification and does what 
 
 We have used EUnit to implement unit tests for both the general MR skeleton and the MXM functions, all of which succeed. Particularly, we make sure that
 \begin{itemize}
-  \item the MR skeleton starts and stops coordinator, mapper and reducer threads when we tell it to do so
-  \item the MR skeleton returns correct results for several basic map and reduce functions on simple data sets
-  \item the functions working on the MXM data set return correct results
+  \item the MR skeleton starts and stops coordinator, mapper and reducer threads when we tell it to do so.
+  \item the MR skeleton returns correct results for several basic map and reduce functions on simple data sets, and can execute several different tasks in a row.
+  \item the functions working on the MXM data set return correct and consistent results: Since the size of the dataset makes it tough to decide if a result is actually correct, we also test on a tiny selfmade dataset where we can manually determine what the correct results are.
   \item all of the above also work for special cases like empty data sets.
 \end{itemize}
-For more information on the specific tests, see \texttt{mr\_test.erl}.
+For more information on the specific tests, see \texttt{mr\_test.erl}. To run all tests, use \texttt{mr\_test:test\_all/0}. Since The tests on the MXM dataset take some time, you should expect this function to run for about 30-50 seconds. In order to test \texttt{grep} with automatical lookup of word stems (see below), run \texttt{mr\_test:mxm\_stems\_test/0}. This test requires the file \texttt{stemmed\_words.txt} to be present in the current directory.
 
-Our MR skeleton is comparatively verbose, which is why we can easily observe any changes in state during the program execution and make sure whatever happens conforms to what we expected. We have used \texttt{whatwasitcalled} to monitor processes during execution for the same reason. There is also an additional command that allows to get additional status information from the coordinator.
+Our MR skeleton is comparatively verbose, which is why we can easily observe any changes in state during the program execution and make sure whatever happens conforms to what we expected. We have used \texttt{pman} to monitor processes during execution for the same reason. There is also an additional command that allows to get additional status information from the coordinator.
 
-There is actually some very basic error handling/prevention functionality in the sense that we check a few very important inputs for their validity (for example, it is not possible to start the coordinator without starting at least one mapper) and we time out instead of waiting infinitely in the reducer in case some results from the mappers go missing.
+We added some very basic error handling/prevention functionality in the sense that we check a few very important inputs for their validity (for example, it is not possible to start the coordinator without starting at least one mapper) and we time out instead of waiting infinitely in the reducer in case some results from the mappers go missing.
 
 All in all, we are confident that our implementation does what we want it to do, and does so in a relatively sensible way.
 
@@ -96,13 +96,15 @@ All in all, we are confident that our implementation does what we want it to do,
 \subsection*{Tackling stemmed words}
 Given that the words in the word list are stemmed, it might sometimes be difficult to find songs containing a given word, because it does occur and that exact form/conjugation. For instance the word ``behave'' is stemmed to ``behav'', which can be tricky to guess.
 
-On the website for the mxm dataset, one can find a file \texttt{stemmed\_words.txt} giving a mapping of words to their stemmed form. \texttt{grep} could thus be extended by first looking up the stemmed form of the given word, and then using the index of the stemmed word.
+On the website for the mxm dataset, one can find a file \texttt{stemmed\_words.txt} giving a mapping of words to their stemmed form. \texttt{grep} can thus be extended by first looking up the stemmed form of the given word, and then using the index of the stemmed word. 
+
+Our \texttt{grep} function accepts as an additional parameter the name of a file containing such a mapping. If a filename is provided, and the specified word cannot be found in the word list as-is, \texttt{grep} will look up a stemmed form in the file.
 
 \subsection*{Error handling}
 We've also included a file \texttt{mr\_safer.erl} in which we try to deal with failing mappers and reducers. We introduced a \texttt{supervise} function that loops waiting for exit signals from any of the mappers, reducer or coordinator. If any of them fail we attempt to replace it.
 
 We also register the coordinator by name in order to be able to replace it without the user having to get a hold of the new pid. This also means that the API of \texttt{mr\_safer} is different from the original API.
 
-But our approach does not seem to be very good, since we can only really do something about any of the processes failing when they're idle. When a job is being processed, we cannot reliably do something about it, in which case we (so far) simply fail the entire job. There are certainly more robust alternatives to this, but we never got that far.
+But our approach does not seem to be very good, since we can only really do something about any of the processes failing when they're idle. When a job is being processed, we cannot reliably do something about it since we don't know (and don't want to keep track of) the exact state of each mapper, each message queue and the reducer all the time, and therefore (so far) we simply fail the entire job. There are certainly more robust alternatives to this, but we never got that far.
 
 \end{document}
