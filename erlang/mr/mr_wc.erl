@@ -70,7 +70,6 @@ compute_averages(MR, {Words, Tracks}) ->
 %% Reducer: Figure if our given song should be added to the list of
 %%          songs containing WordIdx
 grep(MR, Word, {Words, Tracks}) ->
-    %%WordIdx = index_of(Word, Words),
     WordIdx = case lists:member(Word, Words) of
     		  true ->
     		      index_of(Word, Words);
