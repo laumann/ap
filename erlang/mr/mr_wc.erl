@@ -70,11 +70,11 @@ grep(MR, Word, {Words, Tracks}) ->
     {ok, Result} = mr:job(MR,
 			  fun(Track) ->
 				  {_, MXMID, WordBags} = read_mxm:parse_track(Track),
-				  {Ids, _} = lists:unzip(WordBags),
-				  {MXMID, Ids}
+				  {Idxs, _} = lists:unzip(WordBags),
+				  {MXMID, Idxs}
 			  end,
-			  fun({MXMID, Ids}, ListOfTracks) ->
-				  case lists:any(fun(Id) -> WordIdx == Id end, Ids) of
+			  fun({MXMID, Idxs}, ListOfTracks) ->
+				  case lists:member(WordIdx, Idxs) of
 				      true ->
 					  [MXMID|ListOfTracks];
 				      false ->
@@ -83,7 +83,7 @@ grep(MR, Word, {Words, Tracks}) ->
 			  end,
 			  [],
 			  Tracks),
-    Result. %% 8188 songs contain the word "love"
+    Result. %% In mxm_dataset_test: 8188 songs contain the word "love" (of 27143 songs)
 
 
 %% Compute a reverse index, that is, a mapping from words to songs where they occur
@@ -98,15 +98,15 @@ reverse_index(MR, {Words, Tracks}) ->
 			  fun(Track) ->
 				  {_, MXMID, WordBags} = read_mxm:parse_track(Track),
 				  {Idxs,_} = lists:unzip(WordBags),
-				  {MXMID, Idxs}
+				  WordList = lists:map(fun(Idx) -> lists:nth(Idx, Words) end, Idxs), 
+				  {MXMID, WordList}
 			  end,
-			  fun({MXMID, Idxs}, Dict) ->
-				  lists:foldl(fun(Idx, D) ->
-						      Word = lists:nth(Idx, Words),
+			  fun({MXMID, WordList}, Dict) ->
+				  lists:foldl(fun(Word, D) ->
 						      dict:update(Word, fun(L) -> [MXMID|L] end, [MXMID], D)
 					      end,
 					      Dict,
-					      Idxs)
+					      WordList)
 			  end,
 			  dict:new(),
 			  Tracks),

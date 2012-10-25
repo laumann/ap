@@ -8,6 +8,7 @@
 \usepackage{url,paralist,xspace,textcomp}
 \usepackage{enumitem}
 \usepackage{fullpage}
+%%\usepackage{times}
 
 %% First argument is name of Prolog function, second argument is number of args
 \newcommand{\pfunc}[1]{\textnormal{\texttt{#1}}\xspace}
@@ -33,13 +34,51 @@ The code is split up into three modules: The module \texttt{mr}
 
 \section*{Code description}
 We have implemented or completed the following functionality:
-\begin{enumerate}
-\item Map-Reduce skeleton
-\item Total number of words in songs:
-\item Compute averages:
-\item Grep:
-\item Reverse index:
-\end{enumerate}
+\begin{description}
+\item[Map-Reduce] We've ``filled'' in the handed-out \texttt{mr-skel.erl}, so our API is no different from the recommended API, except for one tiny extension: We also export a function \texttt{status/1} that takes a pid and writes the status of the currently running map-reducer.
+  
+  The internal details of the implementation are as follows:
+  \begin{itemize}
+  \item \texttt{start/1} checks whether the given argument is larger than $0$, and returns \texttt{fail} if it isn't
+  \item When \texttt{init/1} spawns its $N$ mappers, it needs to supply (aside from the pid of a reducer) a function for the mapper to use. Since we at initalization time don't have such a function, we provide a default (the \texttt{id} function). One could also have used an atom here \texttt{no\_function} (or something) to indicate that the mapper has not been handed a function.
+  \item The \texttt{Missing} parameter in \texttt{gather\_data\_from\_mappers/3}, we've used as a simple counter, so once we start gathering data from the mappers we simply hand it the length of the input. This is very simplistic and probably not very robust, but it has worked for all our purposes.
+  \item The \texttt{receive} section in \texttt{gather\_data\_from\_mappers} also has a timeout of five seconds, in case one of the mappers died, we don't stall forever, but instead write a message including the \texttt{Acc} and \texttt{Missing} parameters. This way it is quick to see how many pieces of data we're missing. Finally, we return \texttt{timeout}.
+   \item The \texttt{mapper\_loop} is very simple in its implementation, it responds to the messages \texttt{stop}, \texttt{data} and \texttt{setup}. Given \texttt{\{data, D\}} it applies its function and sends the result asynchronously to the reducer. When given \texttt{\{setup, NewFun\}} it simply replaces the function it had with \texttt{NewFun}. An interesting observation about the \texttt{mapper\_loop} is that it only communicates asynchronously (and is only communicated with asynchronously).
+  \end{itemize}
+\item[Total number of words in songs]\hfill
+  \begin{itemize}
+  \item Mapper: Given a \texttt{Track}, parses it with \texttt{read\_mxm:parse\_track/1} to get the list of \texttt{WordBags}, then it folds up the list summing the word count for each word bag.
+  \item Reducer: Given the sum of words for a single track it adds it to a total sum.
+  \end{itemize}
+  When all tracks have been processed the sum returned by the reducer is the total sum of words in all the songs (assuming we start from $0$).
+
+  One could argue that the job of the mapper is only to unpack the given \texttt{Track} and pass the list of words to the reducer to sum, but given that we have more mappers than reducers, it seems sensible to have the mapper do as much work as possible.
+\item[Compute averages]\hfill
+  \begin{itemize}
+  \item Mapper: Does almost the same as the previous exercise, but also counts the number of word bags for a track. The input to the reducer is then a tuple \texttt{\{NDiffWords, NWords\}}.
+  \item Reducer: Needs to calculate a running average. It does this by keeping track of three numbers: The average number of different words (so far), the average number of words (so far) and the number of tracks it has processed (so far).
+
+    When given \texttt{\{NDiffWords, NWords\}} it recomputes the total number of different words and the total number of words, adding in the new numbers and adding one to the number of tracks processed. The new averages are then the totals divided by the new number of tracks.
+  \end{itemize}
+  This implementation is not very efficient, because we're constantly multiplying and dividing, and we cannot guarantee a slight skewing in this way of processing. A more robust method would be to also keep track of the totals.
+\item[Grep]
+  The \texttt{grep}, besides accepting a tuple of \texttt{\{Words, Tracks\}} (output by \texttt{read\_mxm:from\_file/1}), also expects a \texttt{Word} to look for. To speed things up, it first looks up the index of the word in the the list of words.
+  \begin{itemize}
+    \item Mapper: Given a \texttt{Track}, unpacks it to get the \texttt{MXMID} and \texttt{WordBags}. Then it unzips the word bags to get a list of indices \texttt{Idxs}. The input to the reducer is then \texttt{\{MXMID, Idxs\}}.
+    \item Reducer: Given that we've already found the index of the word we're looking for, we just need to see if this index is a member of the given list of indices. If it is, we add \texttt{MXMID} to an accumulated list of tracks (starting from the empty list).
+  \end{itemize}
+  The motivation for first looking up the word index, is that otherwise we'd have to look up every single index to see if the resulting is the word we're looking for (this was our initial implementation and it was observably slower).
+\item[Reverse index]
+  The \texttt{reverse\_index} computes a dictionary (using the module \texttt{dict}), mapping words to the tracks in which they occur.
+  \begin{itemize}
+    \item Mapper: Unpacks a given \texttt{Track}, unzips the word bags to get a list of indices and passes \texttt{\{MXMID, Idxs\}} to the reducer (just as in \texttt{grep}).
+    \item Reducer: Keeps track of the dictionary being built up, and given \texttt{\{MXMID, Idxs\}} folds up the list of indices, for each index looking up the word it refers to and updating the dictionary in the following way:
+      \[
+      \text{\texttt{dict:update(Word, fun(L) -> [MXMID|L] end, [MXMID], Dict)}},
+      \]
+      that is, either adds \texttt{MXMID} to the list for the given word, or starts a new entry.
+  \end{itemize}
+\end{description}
 
 \section*{Assessment}
 As far as we could determine, our code fulfills the specification and does what we intended it to do. Since the requirements specifically state that error handling is not part of the assignment, we mostly just assume that there will be no errors; specifically, that our mapper processes do not die and that all functions are only used on valid data.

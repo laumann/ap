@@ -95,16 +95,10 @@ coordinator_loop(Reducer, Mappers) ->
 	    reply_ok(From, {self(), length(Mappers)}),
 	    coordinator_loop(Reducer, Mappers);
 	{From, {job, MapFun, RedFun, RedInit, Data}} ->
-	    %% Uh, update mappers and reducers, split data and start processing
 	    lists:foreach(fun(M) -> setup_async(M, MapFun) end, Mappers),
-
 	    send_data(Mappers, Data),
-
-	    %% Wait for the reducer to return something
 	    {ok, Result} = rpc(Reducer, {job, {RedFun, RedInit, length(Data)}}),
-	    
 	    reply_ok(From, Result),
-
 	    coordinator_loop(Reducer, Mappers)
     end.
 
@@ -141,10 +135,13 @@ gather_data_from_mappers(Fun, Acc, Missing) ->
             receive
 	        {data, Data} ->
 	            NAcc = Fun(Data, Acc),
-	            gather_data_from_mappers(Fun, NAcc, Missing-1)
+	            gather_data_from_mappers(Fun, NAcc, Missing-1);
+		Unknown ->
+		    io:format("Unknown message: ~p~n",[Unknown]),
+		    gather_data_from_mappers(Fun, Acc, Missing)
             after 5000 ->
-	        io:format("Timed out - state is now: Acc: ~p, Missing: ~p~n", [Acc, Missing]),
-	        Acc
+		    io:format("Timed out - state is now: Acc: ~p, Missing: ~p~n", [Acc, Missing]),
+		    timeout
             end;
         ?otherwise ->
 	    io:format("Finished~n"),
@@ -166,7 +163,7 @@ mapper_loop(Reducer, Fun) ->
 	    io:format("Mapper ~p received new mapper function~n", [self()]),
 	    mapper_loop(Reducer, NewFun);
 	Unknown ->
-	    io:format("unknown message: ~p~n",[Unknown]), 
+	    io:format("Unknown message: ~p~n",[Unknown]),
 	    mapper_loop(Reducer, Fun)
     end.
 
