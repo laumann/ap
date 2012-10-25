@@ -7,7 +7,22 @@
 %%% Unit tests for MR & MXM operations    
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%% Use mr_test:test(). to run all tests.
+%% Use this to run all tests
+%% Running test() will NOT work because mxm_test/0 times out
+%% May take ~30s
+test_all() ->
+    Tests = [fun init_status_stop_test/0
+            ,fun init_zero_mappers_test/0
+            ,fun sum_test/0
+            ,fun fac_test/0
+            ,fun fac_empty_test/0
+            ,fun fac_sum_test/0
+            ,fun word_count_test/0
+            ,fun mxm_miniset_test/0
+            ,fun mxm_count_test/0
+            ,fun mxm_avg_test/0
+            ,fun mxm_grep_revind_test/0],
+    lists:map(fun (X) -> eunit:test({timeout, 45, X}) end, Tests).
 
 %% Tests for the general purpose MR skeleton
 
@@ -133,6 +148,8 @@ mxm_miniset_test() ->
 %% We just make sure all functions run successfully, since we cannot really be sure what the results should be
 %% When we check results, we compare to values our initial implementation got, to make sure
 %% future improvements haven't broken it.
+
+%% Tests grep and reverse_index
 mxm_grep_revind_test() ->
     {ok, MR} = mr:start(4),
     {Words, Tracks} = read_mxm:from_file("mxm_dataset_test.txt"),
@@ -153,6 +170,7 @@ mxm_grep_revind_test() ->
     ?assert(length(ContainingLove)=:=8188),
     mr:stop(MR).
 
+%% Tests count
 mxm_count_test() ->
     {ok, MR} = mr:start(4),
     {_, Tracks} = read_mxm:from_file("mxm_dataset_test.txt"),
@@ -160,6 +178,7 @@ mxm_count_test() ->
     ?assert(Sum=:=5761183),
     mr:stop(MR).
 
+%% Tests compute_averages
 mxm_avg_test() ->
     {ok, MR} = mr:start(4),
     {Words, Tracks} = read_mxm:from_file("mxm_dataset_test.txt"),
@@ -168,6 +187,8 @@ mxm_avg_test() ->
     ?assert((AvgDiff>81.029694580) and (AvgDiff < 81.029694581)),
     mr:stop(MR).
 
+%% Tests the lookup of stemmed forms in mxm_dataset_test.txt
+%% The file has to be present in the current dir for the test to succeed.
 mxm_stems_test() ->
     {ok, MR} = mr:start(4),
     {Words, Tracks} = read_mxm:from_file("mxm_dataset_test.txt"),
@@ -177,6 +198,7 @@ mxm_stems_test() ->
     ?assert(length(Stemming)=:=43),
     mr:stop(MR).
 
+%% Utility functions
 compare_sets(A,B) ->
     if length(A)=:=length(B) ->
         contains_all(A,B,identical);
@@ -195,22 +217,6 @@ contains_all(A,B,State) ->
        contains_all(T,B,State)
     end.
 
-%% Use this to run all tests
-%% Running test() will NOT work because mxm_test/0 times out
-%% May take ~30s
-test_all() ->
-    Tests = [fun init_status_stop_test/0
-            ,fun init_zero_mappers_test/0
-            ,fun sum_test/0
-            ,fun fac_test/0
-            ,fun fac_empty_test/0
-            ,fun fac_sum_test/0
-            ,fun word_count_test/0
-            ,fun mxm_miniset_test/0
-            ,fun mxm_count_test/0
-            ,fun mxm_avg_test/0
-            ,fun mxm_grep_revind_test/0],
-    lists:map(fun (X) -> eunit:test({timeout, 45, X}) end, Tests).
 
 
     

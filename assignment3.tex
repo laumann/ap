@@ -72,6 +72,8 @@ We have implemented or completed the following functionality:
       \]
       that is, either adds \texttt{MXMID} to the list for the given word, or starts a new entry.
   \end{itemize}
+\item[Grep vs. Reverse index]
+  The question whether one should use \texttt{grep} or \texttt{reverse\_index} for a given tasks mainly depends on the amount of requests one has to make. Grepping for a single words requires far less computation than calculating a reverse index of \emph{all} possible words and then performing a dictionary lookup. However, if one has to query for a large number of words, computing a reverse index once means that one only has to perform simple dictionary lookups for each single request afterwards, which is much easier and faster than grepping the original dataset again and again. Therefore it would be sensible to use \texttt{grep} if there are only few queries, and \texttt{reverse\_index} if there will be a lot of queries. It is difficult to say exactly how many queries are needed to justify computing a reversed index (and it probably depends on the system in use), and it might not really matter in a number of cases.
 \end{description}
 
 \section*{Assessment}
