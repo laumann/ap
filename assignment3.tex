@@ -99,7 +99,10 @@ Given that the words in the word list are stemmed, it might sometimes be difficu
 On the website for the mxm dataset, one can find a file \texttt{stemmed\_words.txt} giving a mapping of words to their stemmed form. \texttt{grep} could thus be extended by first looking up the stemmed form of the given word, and then using the index of the stemmed word.
 
 \subsection*{Error handling}
+We've also included a file \texttt{mr\_safer.erl} in which we try to deal with failing mappers and reducers. We introduced a \texttt{supervise} function that loops waiting for exit signals from any of the mappers, reducer or coordinator. If any of them fail we attempt to replace it.
 
-Lalala
+We also register the coordinator by name in order to be able to replace it without the user having to get a hold of the new pid. This also means that the API of \texttt{mr\_safer} is different from the original API.
+
+But our approach does not seem to be very good, since we can only really do something about any of the processes failing when they're idle. When a job is being processed, we cannot reliably do something about it, in which case we (so far) simply fail the entire job. There are certainly more robust alternatives to this, but we never got that far.
 
 \end{document}
