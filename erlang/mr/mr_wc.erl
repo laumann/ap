@@ -88,9 +88,14 @@ grep(MR, Word, {Words, Tracks}) ->
 						 end,
 						 [],
 						 BLines),
-    		      {_, Stemmed} = proplists:lookup(Word, WordMapping),
-		      io:format("'~s' got stemmed to '~s'~n", [Word, Stemmed]),
-    		      index_of(Stemmed, Words)
+    		      LookupRes = proplists:lookup(Word, WordMapping),
+    		      case LookupRes of
+    		          {_, Stemmed} ->
+		              io:format("'~s' got stemmed to '~s'~n", [Word, Stemmed]),
+    		              index_of(Stemmed, Words);
+    		          none ->
+    		              -1
+    		      end
     	      end,
     {ok, Result} = mr:job(MR,
 			  fun(Track) ->

@@ -1,6 +1,8 @@
 -include_lib("eunit/include/eunit.hrl").
 -module(mr_test).
 -compile(export_all).
+-define(otherwise, true).
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Unit tests for MR & MXM operations    
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -125,9 +127,71 @@ mxm_miniset_test() ->
     ContYou2 = dict:fetch("you", TRevInd),
     ?assert((ContYou2=:=[<<"3811449">>,<<"5325944">>]) or (ContYou2=:=[<<"5325944">>,<<"3811449">>])),
     ?assert(dict:fetch("acabar", TRevInd)=:=[<<"1548880">>]),
-    mr:stop(MR),
-    ok.
+    mr:stop(MR).
 
+%% Use our functions on the actual data set
+%% We just make sure all functions run successfully, since we cannot really be sure what the results should be
+%% When we check results, we compare to values our initial implementation got, to make sure
+%% future improvements haven't broken it.
+mxm_test() ->
+    {ok, MR} = mr:start(4),
+    {Words, Tracks} = read_mxm:from_file("mxm_dataset_test.txt"),
+    
+    % Run count
+    Sum = mr_wc:count(MR,Tracks),
+
+    % Run grep
+    ContainingLove = mr_wc:grep(MR, "love", {Words, Tracks}),
+    % Grep with an empty string should not return anything
+    GrepEmpty =      mr_wc:grep(MR, "asdxyz", {Words, Tracks}),
+    ?assert(length(GrepEmpty)=:=0),
+
+    % Run averages
+    {AvgDiff, AvgWords} = mr_wc:compute_averages(MR, {Words, Tracks}),
+
+    % Run reverse_index
+    RevInd = mr_wc:reverse_index(MR, {Words, Tracks}),
+    % Use the result
+    ContainingLove2 = dict:fetch("love", RevInd),
+
+    % Grep and RevInd+Fetch should return identical resuls (order may vary)
+    ?assert(compare_sets(ContainingLove,ContainingLove2)=:=identical),
+    ?assert(length(ContainingLove)=:=8188),
+    mr:stop(MR),
+    {Sum, ContainingLove,ContainingLove2, AvgDiff, AvgWords}.
+
+compare_sets(A,B) ->
+    if length(A)=:=length(B) ->
+        contains_all(A,B,identical);
+    ?otherwise ->
+        different
+    end.
+
+contains_all([],_,State) -> State;
+contains_all(A,B,State) ->
+    [H | T] = A,
+    Ind = mr_wc:index_of(H,B),
+    if Ind =:= -1 ->
+       io:format("Not in there: ~p", [H]),
+       contains_all(T,B,different);
+    ?otherwise ->
+       contains_all(T,B,State)
+    end.
+
+%% Use this to run all tests
+%% Running test() will NOT work because mxm_test/0 times out
+%% May take ~30s
+test_all() ->
+    Tests = [fun init_status_stop_test/0
+            ,fun init_zero_mappers_test/0
+            ,fun sum_test/0
+            ,fun fac_test/0
+            ,fun fac_empty_test/0
+            ,fun fac_sum_test/0
+            ,fun word_count_test/0
+            ,fun mxm_miniset_test/0
+            ,fun mxm_test/0],
+    lists:map(fun (X) -> eunit:test({timeout, 45, X}) end, Tests).
 
 
     
