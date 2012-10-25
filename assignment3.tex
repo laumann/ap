@@ -100,4 +100,13 @@ All in all, we are confident that our implementation does what we want it to do,
 
 \section*{Extensions}
 
+\subsection*{Tackling stemmed words}
+Given that the words in the word list are stemmed, it might sometimes be difficult to find songs containing a given word, because it does occur and that exact form/conjugation. For instance the word ``behave'' is stemmed to ``behav'', which can be tricky to guess.
+
+On the website for the mxm dataset, one can find a file \texttt{stemmed\_words.txt} giving a mapping of words to their stemmed form. \texttt{grep} could thus be extended by first looking up the stemmed form of the given word, and then using the index of the stemmed word.
+
+\subsection*{Error handling}
+
+Lalala
+
 \end{document}
