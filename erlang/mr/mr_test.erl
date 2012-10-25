@@ -133,21 +133,15 @@ mxm_miniset_test() ->
 %% We just make sure all functions run successfully, since we cannot really be sure what the results should be
 %% When we check results, we compare to values our initial implementation got, to make sure
 %% future improvements haven't broken it.
-mxm_test() ->
+mxm_grep_revind_test() ->
     {ok, MR} = mr:start(4),
     {Words, Tracks} = read_mxm:from_file("mxm_dataset_test.txt"),
-    
-    % Run count
-    Sum = mr_wc:count(MR,Tracks),
 
     % Run grep
     ContainingLove = mr_wc:grep(MR, "love", {Words, Tracks}),
     % Grep with an empty string should not return anything
     GrepEmpty =      mr_wc:grep(MR, "asdxyz", {Words, Tracks}),
     ?assert(length(GrepEmpty)=:=0),
-
-    % Run averages
-    {AvgDiff, AvgWords} = mr_wc:compute_averages(MR, {Words, Tracks}),
 
     % Run reverse_index
     RevInd = mr_wc:reverse_index(MR, {Words, Tracks}),
@@ -157,8 +151,22 @@ mxm_test() ->
     % Grep and RevInd+Fetch should return identical resuls (order may vary)
     ?assert(compare_sets(ContainingLove,ContainingLove2)=:=identical),
     ?assert(length(ContainingLove)=:=8188),
-    mr:stop(MR),
-    {Sum, ContainingLove,ContainingLove2, AvgDiff, AvgWords}.
+    mr:stop(MR).
+
+mxm_count_test() ->
+    {ok, MR} = mr:start(4),
+    {Words, Tracks} = read_mxm:from_file("mxm_dataset_test.txt"),
+    Sum = mr_wc:count(MR,Tracks),
+    ?assert(Sum=:=5761183),
+    mr:stop(MR).
+
+mxm_avg_test() ->
+    {ok, MR} = mr:start(4),
+    {Words, Tracks} = read_mxm:from_file("mxm_dataset_test.txt"),
+    {AvgDiff, AvgWords} = mr_wc:compute_averages(MR, {Words, Tracks}),
+    ?assert((AvgWords>212.25299340) and (AvgWords < 212.25299341)),
+    ?assert((AvgDiff>81.029694580) and (AvgDiff < 81.029694581)),
+    mr:stop(MR).
 
 compare_sets(A,B) ->
     if length(A)=:=length(B) ->
@@ -190,7 +198,9 @@ test_all() ->
             ,fun fac_sum_test/0
             ,fun word_count_test/0
             ,fun mxm_miniset_test/0
-            ,fun mxm_test/0],
+            ,fun mxm_count_test/0
+            ,fun mxm_avg_test/0
+            ,fun mxm_grep_revind_test/0],
     lists:map(fun (X) -> eunit:test({timeout, 45, X}) end, Tests).
 
 
