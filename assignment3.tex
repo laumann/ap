@@ -71,8 +71,8 @@ We have implemented or completed the following functionality:
 \item[Reverse index]
   The \texttt{reverse\_index} computes a dictionary (using the module \texttt{dict}), mapping words to the tracks in which they occur.
   \begin{itemize}
-    \item Mapper: Unpacks a given \texttt{Track}, unzips the word bags to get a list of indices and passes \texttt{\{MXMID, Idxs\}} to the reducer (just as in \texttt{grep}).
-    \item Reducer: Keeps track of the dictionary being built up, and given \texttt{\{MXMID, Idxs\}} folds up the list of indices, for each index looking up the word it refers to and updating the dictionary in the following way:
+    \item Mapper: Unpacks a given \texttt{Track}, unzips the word bags to get a list of indices. Then it maps every index to a word in \texttt{Words} and passes \texttt{\{MXMID, WordList\}} to the reducer.
+    \item Reducer: Keeps track of the dictionary being built up, and given \texttt{\{MXMID, WordList\}} folds up the list of word, for each word updating the dictionary in the following way:
       \[
       \text{\texttt{dict:update(Word, fun(L) -> [MXMID|L] end, [MXMID], Dict)}},
       \]
