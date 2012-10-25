@@ -42,21 +42,21 @@ count(MR, Tracks) ->
 %% Compute the average number of different words in a song _and_ the
 %% average total number of words in a song.
 compute_averages(MR, {_, Tracks}) ->
-    {ok, {AvgDiff, AvgWords, _}} = mr:job(MR,
+    {ok, {TotalDiff, TotalWords, NSongs}} = mr:job(MR,
 					  fun(Track) ->
 						  %% Output: Number of different words + Number of words in song
 						  {_,_,WordBags} = read_mxm:parse_track(Track),
 						  lists:foldl(fun({_,Cnt},{L,Sum}) -> {L+1,Sum+Cnt} end, {0,0},WordBags)
 					  end,
-					  fun({NDiffWords, NWords}, {AvgDiffWords,AvgWords,NTracks}) ->
-						  TotalDiff = AvgDiffWords*NTracks + NDiffWords,
-						  TotalWords = AvgWords*NTracks + NWords,
+					  fun({NDiffWords, NWords}, {DiffWords,Words,NTracks}) ->
+						  TotalDiff = DiffWords + NDiffWords,
+						  TotalWords = Words + NWords,
 						  NNTracks = NTracks + 1,
-						  {TotalDiff/NNTracks, TotalWords/NNTracks, NNTracks}
+						  {TotalDiff, TotalWords, NNTracks}
 					  end,
 					  {0,0,0},
 					  Tracks),
-    {AvgDiff, AvgWords}.
+    {TotalDiff/NSongs, TotalWords/NSongs}.
 
 %% For a given word, find the MSD track ID's for all songs with that word.
 %%
