@@ -59,14 +59,39 @@ compute_averages(MR, {Words, Tracks}) ->
     {AvgDiff, AvgWords}.
 
 %% For a given word, find the MSD track ID's for all songs with that word.
+%%
+%% If the word is not on stemmed form, we try to find the stemmed form
+%% by parsing and reading the file "stemmed_words.txt" (assuming it
+%% exists). For parsing this file we utilise the same given MR.
+%%
 %% Words: List of words
 %% Tracks: List of tracks - 
 %% Mapper:  Output Song Id + plus list of word indices
 %% Reducer: Figure if our given song should be added to the list of
 %%          songs containing WordIdx
-
 grep(MR, Word, {Words, Tracks}) ->
-    WordIdx = index_of(Word, Words),
+    %%WordIdx = index_of(Word, Words),
+    WordIdx = case lists:member(Word, Words) of
+    		  true ->
+    		      index_of(Word, Words);
+    		  false ->
+		      io:format("Stemming '~s'~n", [Word]),
+    		      {ok, Bin} = file:read_file("stemmed_words.txt"),
+    		      BLines = binary:split(Bin, <<$\n>>, [global,trim]),
+    		      {ok, WordMapping} = mr:job(MR,
+						 fun(BLin) ->
+							 [OrigWord,StemmedWord] = binary:split(BLin, <<$\t>>),
+							 {binary_to_list(OrigWord), binary_to_list(StemmedWord)}
+						 end,
+						 fun(Tuple, List) ->
+							 [Tuple|List]
+						 end,
+						 [],
+						 BLines),
+    		      {_, Stemmed} = proplists:lookup(Word, WordMapping),
+		      io:format("'~s' got stemmed to '~s'~n", [Word, Stemmed]),
+    		      index_of(Stemmed, Words)
+    	      end,
     {ok, Result} = mr:job(MR,
 			  fun(Track) ->
 				  {_, MXMID, WordBags} = read_mxm:parse_track(Track),
